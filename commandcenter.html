@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Filcns Testbed - Command and Control Center</title>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<style>
+#output{
+ background-color: #dddddd;
+}
+</style>
+</head>
+<body>
+<h1>Filcns Testbed - Command and Control Center</h1>
+<div id='output'></div>
+<!--<button type="button" id="start_cluster_btn">Start Cluster</button>
+<button type="button" id="restart_cluster_btn">Stop Cluster</button>-->
+<button type="button" id="get_pods_btn">Get Pods</button>
+<!--<button type="button" id="init_firstNode_btn">Init First Node</button>--><br>
+<button type="button" id="get_status_0_btn">Status First Node</button>
+<button type="button" id="get_status_1_btn">Status Second Node</button>
+<button type="button" id="get_status_2_btn">Status Third Node</button><br>
+<button type="button" id="get_peers_0_btn">Peers First Node</button>
+<button type="button" id="get_peers_1_btn">Peers Second Node</button>
+<button type="button" id="get_peers_2_btn">Peers Third Node</button><br>
+<button type="button" id="get_wallets_0_btn">List Wallets on First Node</button>
+<button type="button" id="get_wallets_1_btn">List Wallets on Second Node</button>
+<button type="button" id="get_wallets_2_btn">List Wallets on Third Node</button><br>
+<button type="button" id="send_to_new_0_btn">Transfer 1FIL to new Wallets on First Node</button>
+<button type="button" id="send_to_new_1_btn">Transfer 1FIL to new Wallets on Second Node</button>
+<button type="button" id="send_to_new_2_btn">Transfer 1FIL to new Wallets on Third Node</button>
+get_peers_0_btn
+<script>
+LOCAL_RCE = 'http://localhost:8080'
+PODS_IPS = []
+
+const startMinerOnFirstNode = () => {
+  console.log("startMinerOnFirstNode")
+  fetch("http://"+ PODS_IPS[0] + "?" + encodeURIComponent("lotus-miner init --genesis-miner --actor=t01000 --sector-size=2KiB --pre-sealed-sectors=~/.genesis-sectors --pre-sealed-metadata=~/.genesis-sectors/pre-seal-t01000.json --nosync"))
+  .then(response => response.text())
+  .then(data => {
+    $('#output').html(data.replace(/\n/g, "<br />"))
+  })
+}
+
+const initFirstNode = () => {
+  console.log("initFirstNode")
+  fetch("http://"+ PODS_IPS[0] + "?" + encodeURIComponent("eudico filcns daemon --genesis=gen.gen"))
+  .then(response => response.text())
+  .then(data => {
+    $('#output').text(data.replace(/\n/g, "<br />"))
+    fetch("http://"+ PODS_IPS[0] + "?" + encodeURIComponent("eudico wait-api"))
+    .then(response => response.text())
+    .then(data => {
+      $('#output').html(data.replace(/\n/g, "<br />"))
+      fetch("http://"+ PODS_IPS[0] + "?" + encodeURIComponent("eudico wallet import --as-default --format=json-lotus key.key"))
+      .then(response => response.text())
+      .then(data => {
+        $('#output').html(data.replace(/\n/g, "<br />"))
+        fetch("http://"+ PODS_IPS[0] + "?" + encodeURIComponent("eudico net listen | head -n 1 > /config/peerID.txt"))
+        .then(response => response.text())
+        .then(data => {
+          $('#output').html(data.replace(/\n/g, "<br />"))
+          startMinerOnFirstNode()
+        })      
+      })
+    })
+  })
+}
+
+const getNodeAddress = () => {
+ console.log("getNodeAddress")
+ fetch(LOCAL_RCE + '?' + encodeURIComponent("k3s kubectl get pods -o wide | awk '{ print $6 }' | tail -n +2"))
+   .then(response => response.text())
+   .then(data => {
+   
+     PODS_IPS = data.split("\n").filter(value => value.length != 0)
+     $('#output').html(data)
+   
+   })
+}
+const checkLocalRCE = () => {
+  console.log("checkLocalRCE")
+  fetch(LOCAL_RCE+'?ls')
+  .then(response => response.text())
+  .then(data => {
+    getNodeAddress()
+  })
+  .catch((error) => {
+    alert("No local RCE available")
+  })
+}
+const stopCluster = () => {
+  console.log("stopCluster")
+  fetch(LOCAL_RCE+'?./stop.sh')
+  .then(response => response.text())
+  .then(data => {
+    $('#output').html(data.replace(/\n/g, "<br />"))
+  })
+  .catch((error) => {
+    alert("No local RCE available")
+  })
+}
+const startCluster = () => {
+  console.log("startCluster")
+  fetch(LOCAL_RCE+'?./build_start.sh')
+  .then(response => response.text())
+  .then(data => {
+    $('#output').html(data.replace(/\n/g, "<br />"))
+  })
+  .catch((error) => {
+    alert("No local RCE available")
+  })
+}
+const getWallets = (pod) => {
+  console.log("getWallets")
+  fetch("http://"+ PODS_IPS[pod]+'?eudico wallet list')
+  .then(response => response.text())
+  .then(data => {
+    $('#output').html(data.replace(/\n/g, "<br />"))
+  })
+}
+const sendToNewWallet = (pod, amount) => {
+  console.log("sendToNewWallet")
+  fetch("http://"+ PODS_IPS[pod]+'?eudico send $(eudico wallet new) '+ amount)
+  .then(response => response.text())
+  .then(data => {
+    $('#output').html(data.replace(/\n/g, "<br />"))
+  })
+}
+const eudicostatus = (pod) => {
+  console.log("eudicostatus")
+  fetch("http://"+ PODS_IPS[pod]+'?eudico status')
+  .then(response => response.text())
+  .then(data => {
+    $('#output').html(data.replace(/\n/g, "<br />"))
+  })
+}
+const eudicopeers = (pod) => {
+  console.log("eudicopeers")
+  fetch("http://"+ PODS_IPS[pod]+'?eudico net peers')
+  .then(response => response.text())
+  .then(data => {
+    $('#output').html(data.replace(/\n/g, "<br />"))
+  })
+}
+
+
+
+$(document).ready(function(){
+  $("#init_firstNode_btn").click(function(){initFirstNode()});
+  $("#start_cluster_btn").click(function(){startCluster()});
+  $("#stop_cluster_btn").click(function(){stopCluster()});
+  $("#get_pods_btn").click(function(){getNodeAddress()});
+  $("#get_status_0_btn").click(function(){eudicostatus(0)});
+  $("#get_status_1_btn").click(function(){eudicostatus(1)});
+  $("#get_status_2_btn").click(function(){eudicostatus(2)});
+  $("#get_peers_0_btn").click(function(){eudicopeers(0)});
+  $("#get_peers_1_btn").click(function(){eudicopeers(1)});
+  $("#get_peers_2_btn").click(function(){eudicopeers(2)});
+  $("#get_wallets_0_btn").click(function(){getWallets(0)});
+  $("#get_wallets_1_btn").click(function(){getWallets(1)});
+  $("#get_wallets_2_btn").click(function(){getWallets(2)});
+  $("#send_to_new_0_btn").click(function(){sendToNewWallet(0,1)});
+  $("#send_to_new_1_btn").click(function(){sendToNewWallet(1,1)});
+  $("#send_to_new_2_btn").click(function(){sendToNewWallet(2,1)});
+
+  checkLocalRCE();
+})
+
+</script>
+</body>
+</html>
