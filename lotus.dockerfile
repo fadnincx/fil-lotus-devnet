@@ -2,11 +2,10 @@
 FROM golang:1.17 as builder
 
 # set BRANCH_FIL or COMMIT_HASH_FIL
-ARG BRANCH_FIL=release/v1.13.2
+ARG BRANCH_FIL=fil-benchmark
 ARG COMMIT_HASH_FIL=""
-ARG REPO_FIL=https://github.com/filecoin-project/lotus
+ARG REPO_FIL=https://github.com/fadnincx/lotus
 ARG NODEPATH=/lotus
-
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Clone Eudico
@@ -25,8 +24,9 @@ WORKDIR ${NODEPATH}
 RUN git clone ${REPO_FIL} ${NODEPATH}
 
 RUN if [ ! -z "${BRANCH_FIL}" ]; then \
-        echo "Checking out to Eudico branch: ${BRANCH_FIL}"; \
+        echo "Checking out to Lotus branch: ${BRANCH_FIL}"; \
   		git checkout ${BRANCH_FIL}; \
+  		echo "Git tag: $(git log --format="%H" -n 1)"; \
     fi
 
 RUN if [ ! -z "${COMMIT_HASH_FIL}" ]; then \
@@ -69,7 +69,10 @@ COPY key.key /key.key
 #COPY devnet_config.toml /root/.lotus/config.toml
 #COPY devnet_config.toml /root/.lotusminer/config.toml
 
-COPY rce.py /rce.py
+COPY rce/rce /usr/local/bin/
+
+ENV LOTUS_REDIS_ADDR lotus-redis:6379
+
 # Copy start script
 COPY start_lotus.sh /start_lotus.sh
 

@@ -39,4 +39,5 @@ spec:
         - name: lotus-config
           persistentVolumeClaim:
             claimName: config-pv
+      dnsPolicy: ClusterFirstWithHostNet
 

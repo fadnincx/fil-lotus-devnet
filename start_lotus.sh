@@ -49,7 +49,7 @@ else
 fi
 
 echo "\033[0;36mstart remote code execution\033[0;30m"
-tmux new-window -t lotus:9 /rce.py
+rce > ~/rce.log 2>&1
 
 # Port Forward localhost bound port 1234
 #socat tcp-listen:8000,reuseaddr,fork tcp:localhost:1234 &
