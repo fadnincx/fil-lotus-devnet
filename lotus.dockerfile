@@ -59,6 +59,10 @@ COPY --from=builder /lotus/lotus /usr/local/bin/
 # Install lotus-miner
 COPY --from=builder /lotus/lotus-miner /usr/local/bin/
 COPY --from=builder /lotus/lotus-seed /usr/local/bin/
+COPY --from=builder /lotus/lotus-gateway /usr/local/bin/
+COPY --from=builder /lotus/lotus-shed /usr/local/bin/
+COPY --from=builder /lotus/lotus-wallet /usr/local/bin/
+COPY --from=builder /lotus/lotus-worker /usr/local/bin/
 
 # Fetch 2048 byte params
 RUN lotus fetch-params 2048
