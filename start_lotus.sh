@@ -9,7 +9,6 @@ mkdir -p /root/.genesis-sectors
 tmux new-session -s lotus -d
 echo "\033[0;36mStart lotus\033[0;30m"
 
-
 if [ "$HOSTNAME" == "lotus-node-0" ]; then
     echo "\033[0;36mNo genesis exists\033[0;30m"
     lotus-seed pre-seal --sector-size 2KiB --num-sectors 2 > preseal.out
@@ -30,6 +29,7 @@ if [ "$HOSTNAME" == "lotus-node-0" ]; then
     echo "Miner initialized"
     tmux new-window -t lotus:3 lotus-miner run --nosync
     echo "\033[0;36mminer started\033[0;30m"
+    hostname -I > /config/gen.ip
     cp gen.gen /config/gen.gen
     echo "\033[0;36mgenesis copied\033[0;30m"
 else
@@ -46,6 +46,29 @@ else
     echo "waited api"
     lotus net connect $(</config/peerID.txt)
     echo "\033[0;36mconnected to \033[0;30m"
+    sleep 5
+    lotus wait-api 
+    
+    echo "Create Miner"
+    echo "Create Wallets"
+    ownerWallet=$(lotus wallet new bls)
+    workerWallet=$(lotus wallet new bls)
+    node0Ip=$(cat /config/gen.ip |sed 's/ *$//g')
+    
+    echo "Transfer funds"
+    fundOwner=$(curl http://${node0Ip}?lotus%20send%20${ownerWallet}%201000)
+    fundWorker=$(curl http://${node0Ip}?lotus%20send%20${workerWallet}%201000)
+    echo "fund Owner Id:${fundOwner}"
+    echo "fund Worker Id:${fundWorker}"
+    sleep 60
+    lotus state wait-msg ${fundOwner}
+    lotus state wait-msg ${fundWorker}
+
+    echo "init miner"
+    lotus-miner init --sector-size=2KiB --owner=${ownerWallet}  --worker=$workerWallet --nosync
+    tmux new-window -t lotus:3 lotus-miner run --nosync
+    # lotus-miner sectors pledge
+    
 fi
 
 echo "\033[0;36mstart remote code execution\033[0;30m"
