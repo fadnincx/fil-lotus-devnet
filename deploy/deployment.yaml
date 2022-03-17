@@ -33,8 +33,11 @@ spec:
           resources:
             limits:
               cpu: "800m"
+              memory: "6G"
             requests:
               cpu: "500m"
+              memory: "4G"
+              
       volumes:
         - name: lotus-config
           persistentVolumeClaim:

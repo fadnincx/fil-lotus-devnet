@@ -1,77 +1,179 @@
 #! /bin/bash
+
+###################################################################################
+#                                                                                 #
+#  Lotus Testnode Start Script - Marcel Wuersten - 2022 - University of Bern      #
+#                                                                                 #
+###################################################################################
+
+# Define env vars
 export LOTUS_SKIP_GENESIS_CHECK=_yes_
 export LOTUS_PATH=~/.lotus
 export LOTUS_MINER_PATH=~/.lotusminer
-mkdir -p /root/.lotus
-mkdir -p /root/.lotusminer
-mkdir -p /root/.genesis-sectors
 
-tmux new-session -s lotus -d
-echo "\033[0;36mStart lotus\033[0;30m"
+# create general directories
+mkdir -p ~/.lotus
+mkdir -p ~/.lotusminer
+mkdir -p ~/.genesis-sectors
 
-if [ "$HOSTNAME" == "lotus-node-0" ]; then
-    echo "\033[0;36mNo genesis exists\033[0;30m"
-    lotus-seed pre-seal --sector-size 2KiB --num-sectors 2 > preseal.out
-    echo "pre-seal done"
-    lotus-seed genesis new localnet.json > genesis.out
-    echo "genesis done"
-    lotus-seed genesis add-miner localnet.json ~/.genesis-sectors/pre-seal-t01000.json > genesis-miner.out
-    echo "genesis miner done"
-    tmux new-window -t lotus:1 lotus daemon --lotus-make-genesis=gen.gen --genesis-template=localnet.json --bootstrap=false
-    echo "\033[0;36mdaemon started\033[0;30m"
-    lotus wait-api > api-wait.out
-    echo "Api waited"
-    lotus wallet import --as-default ~/.genesis-sectors/pre-seal-t01000.key
-    echo "Wallet imported"
-    lotus net listen | head -n 1 > /config/peerID.txt
-    echo "Written peerId"
-    lotus-miner init --genesis-miner --actor=t01000 --sector-size=2KiB --pre-sealed-sectors=~/.genesis-sectors --pre-sealed-metadata=~/.genesis-sectors/pre-seal-t01000.json --nosync
-    echo "Miner initialized"
-    tmux new-window -t lotus:3 lotus-miner run --nosync
-    echo "\033[0;36mminer started\033[0;30m"
-    hostname -I > /config/gen.ip
-    cp gen.gen /config/gen.gen
-    echo "\033[0;36mgenesis copied\033[0;30m"
-else
-    until [ -f /config/gen.gen ]
+
+while ! rediscli r fil-nodes; do
+  sleep 1
+done
+nodeCount=$(rediscli r fil-nodes)
+
+if [ "$(hostname)" == "lotus-node-0" ]; then
+    echo "Start genesis"
+    for i in $(seq 0 $nodeCount)
     do
-        sleep 5
+        mkdir -p /config/lotus-node-${i}/
+        mkdir -p /config/lotus-node-${i}/cache
+        mkdir -p /config/lotus-node-${i}/sealed
+        
+        # Generating bls keys for pre-sealing sectors
+        mv ./bls-$(lotus-shed keyinfo new bls).keyinfo /config/lotus-node-${i}/keyPreSeal.keyinfo
+
+        # Generating libp2p ed25519 peer key
+        mv ./libp2p-host-$(lotus-shed keyinfo new libp2p-host).keyinfo /config/lotus-node-${i}/keyPeer.keyinfo
+        
+        # Pre-sealing sectors
+        minerId=$((1000 + ${i}))
+        lotus-seed pre-seal --miner-addr t0${minerId} --sector-size 2KiB --num-sectors 2 --sector-offset 0 --key /config/lotus-node-${i}/keyPreSeal.keyinfo
+        
+        mv /root/.genesis-sectors/pre-seal-t0${minerId}.json /config/lotus-node-${i}/
+        mv /root/.genesis-sectors/cache/s-t0${minerId}-0 /config/lotus-node-${i}/cache/
+        mv /root/.genesis-sectors/cache/s-t0${minerId}-1 /config/lotus-node-${i}/cache/
+        mv /root/.genesis-sectors/sealed/s-t0${minerId}-0 /config/lotus-node-${i}/sealed/
+        mv /root/.genesis-sectors/sealed/s-t0${minerId}-1 /config/lotus-node-${i}/sealed/
+        mv /root/.genesis-sectors/sectorstore.json /config/lotus-node-${i}/
     done
-    echo "\033[0;36mgenesis exists\033[0;30m"
-    cp /config/gen.gen gen.gen
-    echo "\033[0;36mcopied genesis\033[0;30m"
-    tmux new-window -t lotus:1 lotus daemon --genesis=gen.gen 
-    echo "\033[0;36mstarted daemon\033[0;30m"
+    
+    # Generate network configuration
+    lotus-seed genesis new --network-name fil-testnet genesis.json
+    echo "genesis creation done"
+    
+    
+    # Set Network start time, to avoid catchup at start
+    
+    # GENESISDELAY is a time in seconds added to the current time to delay the network start by some amount of time
+    GENESISDELAY=120
+
+    GENESISTMP=$(mktemp)
+    GENESISTIMESTAMP=$(date --utc +%FT%H:%M:00Z)
+    TIMESTAMP=$(echo $(date -d ${GENESISTIMESTAMP} +%s) + ${GENESISDELAY} | bc)
+
+    jq --arg Timestamp ${TIMESTAMP} ' . + { Timestamp: $Timestamp|tonumber } ' < "genesis.json" > ${GENESISTMP}
+    mv ${GENESISTMP} "genesis.json"
+    
+    
+    # Add miners to genesis 
+    for i in $(seq 0 $nodeCount)
+    do
+        lotus-seed genesis add-miner genesis.json /config/lotus-node-${i}/pre-seal-t0$((1000 + ${i})).json
+    done 
+    
+    # Generate genesis car file
+    lotus-seed genesis car --out fil-testnet.car genesis.json
+    mv fil-testnet.car /config/fil-testnet.car
+
+
+    rediscli w fil-genesis-done now
+    echo "Done Genesis"
+fi
+
+
+rediscli w "$(hostname)" ready
+
+while ! rediscli r fil-genesis-done; do
+  sleep 1
+done
+
+
+# Importing keys to lotus repository
+mkdir -p $LOTUS_PATH/keystore && chmod 0600 $LOTUS_PATH/keystore
+lotus-shed keyinfo import /config/$(hostname)/keyPreSeal.keyinfo
+lotus-shed keyinfo import /config/$(hostname)/keyPeer.keyinfo
+
+# Generate Tmux session
+tmux new-session -s lotus -d
+
+if [ "$(hostname)" == "lotus-node-0" ]; then
+
+    for i in $(seq 0 $nodeCount)
+    do
+        while ! rediscli r lotus-node-${i}; do
+          sleep 1
+        done       
+    done
+
+    # Start Genesis Node Daemon  
+    tmux new-window -t lotus:1 lotus daemon --genesis=/config/fil-testnet.car --bootstrap=false
+
+    # Wait till started
+    lotus wait-api
+    
+    # Write ip to config
+    lotus net listen | head -n 1 > /config/node-0.txt
+    
+    lotus-miner init --genesis-miner --actor=t01000 --sector-size=2KiB --pre-sealed-sectors=/config/lotus-node-0 --pre-sealed-metadata=/config/lotus-node-0/pre-seal-t01000.json --nosync
+    
+    tmux new-window -t lotus:3 lotus-miner run --nosync
+
+    hostname -I > /config/gen.ip
+
+    rediscli w fil-start-other-node now
+
+else
+    while ! rediscli r fil-start-other-node; do
+      sleep 1
+    done
+    
+    # Start Node Daemon  
+    tmux new-window -t lotus:1 lotus daemon --genesis=/config/fil-testnet.car --bootstrap=false
+
     lotus wait-api 
-    echo "waited api"
-    lotus net connect $(</config/peerID.txt)
-    echo "\033[0;36mconnected to \033[0;30m"
+
+    lotus net connect $(</config/node-0.txt)
+
     sleep 5
     lotus wait-api 
     
-    echo "Create Miner"
-    echo "Create Wallets"
-    ownerWallet=$(lotus wallet new bls)
-    workerWallet=$(lotus wallet new bls)
-    node0Ip=$(cat /config/gen.ip |sed 's/ *$//g')
+    lotus-miner init --actor=t0$((1000 + $(hostname | sed -e 's/.*[^0-9]\([0-9]\+\)[^0-9]*$/\1/'))) --sector-size=2KiB --pre-sealed-sectors=/config/$(hostname) --pre-sealed-metadata=/config/$(hostname)/pre-seal-t0$((1000 + $(hostname | sed -e 's/.*[^0-9]\([0-9]\+\)[^0-9]*$/\1/'))).json --nosync
     
-    echo "Transfer funds"
-    fundOwner=$(curl http://${node0Ip}?lotus%20send%20${ownerWallet}%201000)
-    fundWorker=$(curl http://${node0Ip}?lotus%20send%20${workerWallet}%201000)
-    echo "fund Owner Id:${fundOwner}"
-    echo "fund Worker Id:${fundWorker}"
-    sleep 60
-    lotus state wait-msg ${fundOwner}
-    lotus state wait-msg ${fundWorker}
-
-    echo "init miner"
-    lotus-miner init --sector-size=2KiB --owner=${ownerWallet}  --worker=$workerWallet --nosync
     tmux new-window -t lotus:3 lotus-miner run --nosync
-    # lotus-miner sectors pledge
+    
+    #echo "Create Miner"
+    #echo "Create Wallets"
+    #ownerWallet=$(lotus wallet new bls)
+    #workerWallet=$(lotus wallet new bls)
+    #node0Ip=$(cat /config/gen.ip |sed 's/ *$//g')
+    
+    #echo "Transfer funds"
+    #fundOwner=$(curl http://${node0Ip}?lotus%20send%20${ownerWallet}%201000)
+    #fundWorker=$(curl http://${node0Ip}?lotus%20send%20${workerWallet}%201000)
+    #echo "fund Owner Id:${fundOwner}"
+    #echo "fund Worker Id:${fundWorker}"
+    #sleep 60
+    #lotus state wait-msg ${fundOwner}
+    #lotus state wait-msg ${fundWorker}
+
+    #echo "init miner"
+    #lotus-miner init --sector-size=2KiB --owner=${ownerWallet}  --worker=$workerWallet --nosync
+    #tmux new-window -t lotus:3 lotus-miner run --nosync
+    
+    #echo "Set miner actor address"
+    #lotus-miner actor set-addrs /ip4/$(hostname -I)/tcp/24001
+    
+    #lotus-miner sectors pledge
+    #lotus-miner sectors pledge
+    #lotus-miner sectors seal 0
+    #lotus-miner sectors seal 1
     
 fi
 
-echo "\033[0;36mstart remote code execution\033[0;30m"
+rediscli w "$(hostname)-started" ready
+
+echo "start remote code execution"
 rce > ~/rce.log 2>&1
 
 # Port Forward localhost bound port 1234

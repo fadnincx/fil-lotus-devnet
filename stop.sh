@@ -11,6 +11,7 @@ kubectl delete pod --all --grace-period 0
 echo "delete peers"
 find /var/lib/rancher/k3s/storage/ -name 'peerID.txt' -exec rm -rf {} \;
 find /var/lib/rancher/k3s/storage/ -name 'gen.gen' -exec rm -rf {} \;
+find /var/lib/rancher/k3s/storage/ -name 'lotus-node-*' -exec rm -rf {} \;
 echo "stop"
 bash -c /usr/local/bin/k3s-killall.sh
 killall k3s-server
