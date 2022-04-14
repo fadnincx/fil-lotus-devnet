@@ -31,14 +31,14 @@ func whoami() string {
 }
 func getRedisNode() string {
 
-	err, out, _ := cmd("kubectl get pods -o wide | grep lotus-redis | awk '{print $6}' | wc -l")
+	err, out, _ := cmd("kubectl get pods -o=go-template='{{println \"NAME IP\"}}{{range .items}}{{.metadata.name}} {{printf \"%s\n\" .status.podIP}}{{end}}' | grep lotus-redis | awk '{print $6}' | wc -l")
 	if err != nil {
 		log.Printf("error getting pod amount: %v\n", err)
 	}
 	amount, _ := strconv.Atoi(strings.TrimSuffix(out, "\n"))
 
 	if amount > 0 {
-		err, ip, _ := cmd(fmt.Sprintf("kubectl get pods -o wide | grep lotus-redis-0 | awk '{print $6}'"))
+		err, ip, _ := cmd(fmt.Sprintf("kubectl get pods -o=go-template='{{println \"NAME IP\"}}{{range .items}}{{.metadata.name}} {{printf \"%s\n\" .status.podIP}}{{end}}' | grep lotus-redis-0 | awk '{print $6}'"))
 		if err != nil {
 			log.Printf("error: %v\n", err)
 		}
