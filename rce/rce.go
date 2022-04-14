@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"os/exec"
-	"strconv"
 )
 
 // Creates a writer that auto flush forwards the data
@@ -71,50 +70,6 @@ func rceRequest(w http.ResponseWriter, r *http.Request) {
 		fmt.Print(err)
 	}
 
-}
-
-var sendMsgAtRateLastStopChannel chan bool = nil
-var sendMsgAtRateLastResultChannel chan avgDelayResult = nil
-var sendMsgAtRateLastRate float64 = 0.0
-
-func sendMsgAtRate(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("send MsgAtRate")
-	destWallet, ok := getUrlParam(r, "dest")
-	if !ok {
-		fmt.Fprintf(w, "Url Param 'dest' is missing")
-	}
-	amount, ok := getUrlParam(r, "amount")
-	if !ok {
-		fmt.Fprintf(w, "Url Param 'amount' is missing")
-	}
-	rateS, ok := getUrlParam(r, "rate")
-	if !ok {
-		fmt.Fprintf(w, "Url Param 'rate' is missing")
-	}
-	rate, err := strconv.ParseFloat(rateS, 64)
-	if err != nil {
-		fmt.Fprintf(w, "Rate is not a float: %v", err)
-	}
-
-	if sendMsgAtRateLastStopChannel != nil {
-		fmt.Println("Stop channel is not nil")
-		sendMsgAtRateLastStopChannel <- true
-		fmt.Println("Wait for results")
-		result := <-sendMsgAtRateLastResultChannel
-		fmt.Fprintf(w, "Last Result: @%f msg/s over %d msg avg delay is %f\n", sendMsgAtRateLastRate, result.amount, result.avgDelay)
-		close(sendMsgAtRateLastStopChannel)
-		close(sendMsgAtRateLastResultChannel)
-	}
-	sendMsgNewResultChannel := make(chan avgDelayResult)
-	sendMsgNewStopChannel := make(chan bool)
-
-	go sendAtRate(destWallet, amount, rate, sendMsgNewStopChannel, sendMsgNewResultChannel)
-	fmt.Println("Started new Rate")
-
-	sendMsgAtRateLastRate = rate
-	sendMsgAtRateLastStopChannel = sendMsgNewStopChannel
-	sendMsgAtRateLastResultChannel = sendMsgNewResultChannel
-	fmt.Println("Request done")
 }
 
 func handleRequests() {

@@ -13,11 +13,19 @@ elif [[ $(hostname) == 'marcel-ThinkPad-X1' ]]; then
 else
  scale=8
 fi
+echo "network param is $2"
+if [[ $2 =~ "ring" ]] || [[ $2 =~ "full" ]] || [[ $2 =~ "tree" ]]; then
+ topology=$2
+else
+ topology="star"
+fi
+echo "Network topology set to $topology"
 echo "Wait for redis"
 sleep 30
 k3s kubectl wait --for=condition=ready pod -l app=redisnode
 echo "scale to ${scale}"
 k3s kubectl scale --replicas=${scale} -f ./deploy/deployment.yaml
+./redis-cli/rediscli w nettopology $topology
 ./redis-cli/rediscli w fil-nodes $(($scale - 1))
 echo "Wait for all node ready"
 

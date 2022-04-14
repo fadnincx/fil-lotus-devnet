@@ -113,15 +113,22 @@ if [ "$(hostname)" == "lotus-node-0" ]; then
     lotus wait-api
     
     # Write ip to config
-    lotus net listen | head -n 1 > /config/node-0.txt
+    lotus net listen | head -n 1 > /config/$(hostname).txt
     
     lotus-miner init --genesis-miner --actor=t01000 --sector-size=2KiB --pre-sealed-sectors=/config/lotus-node-0 --pre-sealed-metadata=/config/lotus-node-0/pre-seal-t01000.json --nosync
     
     tmux new-window -t lotus:3 lotus-miner run --nosync
 
-    hostname -I > /config/gen.ip
-
     rediscli w fil-start-other-node now
+    
+     if [[ $(rediscli r nettopology) =~ "ring"  ]] || [[ $(rediscli r nettopology) =~ "full"  ]]; then
+        until [ -f /config/lotus-node-${nodeCount}.txt ]
+        do
+            sleep 5
+        done
+        lotus net connect $(</config/lotus-node-${nodeCount}.txt)
+    fi
+    
 
 else
     while ! rediscli r fil-start-other-node; do
@@ -132,8 +139,81 @@ else
     tmux new-window -t lotus:1 lotus daemon --genesis=/config/fil-testnet.car --bootstrap=false
 
     lotus wait-api 
+    
+    lotus net listen | head -n 1 > /config/$(hostname).txt
 
-    lotus net connect $(</config/node-0.txt)
+    sleep 15
+    
+    if [[ $(rediscli r nettopology) =~ "ring"  ]]; then
+        until [ -f /config/lotus-node-$((-1 + $(hostname | sed -e 's/.*[^0-9]\([0-9]\+\)[^0-9]*$/\1/'))).txt ]
+        do
+            sleep 5
+        done
+        lotus net connect $(</config/lotus-node-$((-1 + $(hostname | sed -e 's/.*[^0-9]\([0-9]\+\)[^0-9]*$/\1/'))).txt)
+    else if [[ $(rediscli r nettopology) =~ "full"  ]]; then
+        for i in $(seq 0 $((-1 + $(hostname | sed -e 's/.*[^0-9]\([0-9]\+\)[^0-9]*$/\1/'))))
+        do
+            until [ -f /config/lotus-node-${i}.txt ]
+            do
+                sleep 5
+            done
+            lotus net connect $(</config/lotus-node-${i}.txt)
+        done
+        
+    else if [[ $(rediscli r nettopology) =~ "tree"  ]]; then
+        if [ "$(hostname)" == "lotus-node-1" ] || [ "$(hostname)" == "lotus-node-2" ] ; then
+            until [ -f /config/lotus-node-0.txt ]
+            do
+                sleep 5
+            done
+            lotus net connect $(</config/lotus-node-0.txt)
+        else if [ "$(hostname)" == "lotus-node-3" ] || [ "$(hostname)" == "lotus-node-4" ] ; then
+            until [ -f /config/lotus-node-1.txt ]
+            do
+                sleep 5
+            done
+            lotus net connect $(</config/lotus-node-1.txt)
+        else if [ "$(hostname)" == "lotus-node-5" ] || [ "$(hostname)" == "lotus-node-6" ] ; then
+            until [ -f /config/lotus-node-2.txt ]
+            do
+                sleep 5
+            done
+            lotus net connect $(</config/lotus-node-2.txt)
+        else if [ "$(hostname)" == "lotus-node-7" ] || [ "$(hostname)" == "lotus-node-8" ] ; then
+            until [ -f /config/lotus-node-3.txt ]
+            do
+                sleep 5
+            done
+            lotus net connect $(</config/lotus-node-3.txt)
+        else if [ "$(hostname)" == "lotus-node-9" ] || [ "$(hostname)" == "lotus-node-10" ] ; then
+            until [ -f /config/lotus-node-4.txt ]
+            do
+                sleep 5
+            done
+            lotus net connect $(</config/lotus-node-4.txt)
+        else if [ "$(hostname)" == "lotus-node-11" ] || [ "$(hostname)" == "lotus-node-12" ] ; then
+            until [ -f /config/lotus-node-5.txt ]
+            do
+                sleep 5
+            done
+            lotus net connect $(</config/lotus-node-5.txt)
+        else if [ "$(hostname)" == "lotus-node-13" ] || [ "$(hostname)" == "lotus-node-14" ] ; then
+            until [ -f /config/lotus-node-6.txt ]
+            do
+                sleep 5
+            done
+            lotus net connect $(</config/lotus-node-6.txt)
+        else if [ "$(hostname)" == "lotus-node-15" ] || [ "$(hostname)" == "lotus-node-16" ] ; then
+            until [ -f /config/lotus-node-7.txt ]
+            do
+                sleep 5
+            done
+            lotus net connect $(</config/lotus-node-7.txt)
+        fi
+    else
+        lotus net connect $(</config/lotus-node-0.txt) # fall back to star
+    fi
+
 
     sleep 5
     lotus wait-api 
