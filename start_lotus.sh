@@ -150,7 +150,7 @@ else
             sleep 5
         done
         lotus net connect $(</config/lotus-node-$((-1 + $(hostname | sed -e 's/.*[^0-9]\([0-9]\+\)[^0-9]*$/\1/'))).txt)
-    else if [[ $(rediscli r nettopology) =~ "full"  ]]; then
+    elif [[ $(rediscli r nettopology) =~ "full"  ]]; then
         for i in $(seq 0 $((-1 + $(hostname | sed -e 's/.*[^0-9]\([0-9]\+\)[^0-9]*$/\1/'))))
         do
             until [ -f /config/lotus-node-${i}.txt ]
@@ -160,50 +160,50 @@ else
             lotus net connect $(</config/lotus-node-${i}.txt)
         done
         
-    else if [[ $(rediscli r nettopology) =~ "tree"  ]]; then
+    elif [[ $(rediscli r nettopology) =~ "tree"  ]]; then
         if [ "$(hostname)" == "lotus-node-1" ] || [ "$(hostname)" == "lotus-node-2" ] ; then
             until [ -f /config/lotus-node-0.txt ]
             do
                 sleep 5
             done
             lotus net connect $(</config/lotus-node-0.txt)
-        else if [ "$(hostname)" == "lotus-node-3" ] || [ "$(hostname)" == "lotus-node-4" ] ; then
+        elif [ "$(hostname)" == "lotus-node-3" ] || [ "$(hostname)" == "lotus-node-4" ] ; then
             until [ -f /config/lotus-node-1.txt ]
             do
                 sleep 5
             done
             lotus net connect $(</config/lotus-node-1.txt)
-        else if [ "$(hostname)" == "lotus-node-5" ] || [ "$(hostname)" == "lotus-node-6" ] ; then
+        elif [ "$(hostname)" == "lotus-node-5" ] || [ "$(hostname)" == "lotus-node-6" ] ; then
             until [ -f /config/lotus-node-2.txt ]
             do
                 sleep 5
             done
             lotus net connect $(</config/lotus-node-2.txt)
-        else if [ "$(hostname)" == "lotus-node-7" ] || [ "$(hostname)" == "lotus-node-8" ] ; then
+        elif [ "$(hostname)" == "lotus-node-7" ] || [ "$(hostname)" == "lotus-node-8" ] ; then
             until [ -f /config/lotus-node-3.txt ]
             do
                 sleep 5
             done
             lotus net connect $(</config/lotus-node-3.txt)
-        else if [ "$(hostname)" == "lotus-node-9" ] || [ "$(hostname)" == "lotus-node-10" ] ; then
+        elif [ "$(hostname)" == "lotus-node-9" ] || [ "$(hostname)" == "lotus-node-10" ] ; then
             until [ -f /config/lotus-node-4.txt ]
             do
                 sleep 5
             done
             lotus net connect $(</config/lotus-node-4.txt)
-        else if [ "$(hostname)" == "lotus-node-11" ] || [ "$(hostname)" == "lotus-node-12" ] ; then
+        elif [ "$(hostname)" == "lotus-node-11" ] || [ "$(hostname)" == "lotus-node-12" ] ; then
             until [ -f /config/lotus-node-5.txt ]
             do
                 sleep 5
             done
             lotus net connect $(</config/lotus-node-5.txt)
-        else if [ "$(hostname)" == "lotus-node-13" ] || [ "$(hostname)" == "lotus-node-14" ] ; then
+        elif [ "$(hostname)" == "lotus-node-13" ] || [ "$(hostname)" == "lotus-node-14" ] ; then
             until [ -f /config/lotus-node-6.txt ]
             do
                 sleep 5
             done
             lotus net connect $(</config/lotus-node-6.txt)
-        else if [ "$(hostname)" == "lotus-node-15" ] || [ "$(hostname)" == "lotus-node-16" ] ; then
+        elif [ "$(hostname)" == "lotus-node-15" ] || [ "$(hostname)" == "lotus-node-16" ] ; then
             until [ -f /config/lotus-node-7.txt ]
             do
                 sleep 5
