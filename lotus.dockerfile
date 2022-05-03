@@ -71,12 +71,8 @@ COPY --from=builder /lotus/lotus-worker /usr/local/bin/
 RUN lotus-shed fetch-params --proving-params 0
 RUN lotus-shed fetch-params --proving-params 2048
 
-# Copy key files
-COPY key.key /key.key
-# Copy net config
-#COPY devnet_config.toml /root/.lotus/config.toml
-#COPY devnet_config.toml /root/.lotusminer/config.toml
 
+# Copy RCE and rediscli
 COPY rce/rce /usr/local/bin/
 COPY redis-cli/rediscli /usr/local/bin
 

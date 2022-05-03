@@ -42,9 +42,9 @@ You can additionaly specify how many nodes should be spawned and what topology s
 
 **Warning: not all topologies work with any number of nodes!**
 
-Default values are 8 nodes in a `star ` topology.
+Default values are 8 nodes in a `star` topology.
 
-```bash
+```
 ./build_start.sh <# of nodes> <topology>
 ```
 
