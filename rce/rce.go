@@ -23,17 +23,6 @@ func (fw *flushWriter) Write(p []byte) (n int, err error) {
 	return
 }
 
-func getUrlParam(r *http.Request, key string) (string, bool) {
-	values, ok := r.URL.Query()[key]
-
-	if !ok || len(values[0]) < 1 {
-		fmt.Printf("Url Param '%v' is missing\n", key)
-		return "", false
-	}
-
-	return values[0], true
-}
-
 func rceRequest(w http.ResponseWriter, r *http.Request) {
 
 	// Get requested commands
@@ -78,6 +67,6 @@ func handleRequests() {
 }
 
 func main() {
-	go rpcExposer(":3000")
+	go rpcExposer("127.0.0.1:1234", ":3000")
 	handleRequests()
 }

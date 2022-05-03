@@ -76,7 +76,7 @@ func main() {
 		val, err := redisClient.Get(args[1]).Result()
 		if err != nil {
 			if err != redis.Nil {
-			    fmt.Fprintf(os.Stderr, "Redis @ %s\n",addr)
+				fmt.Fprintf(os.Stderr, "Redis @ %s\n", addr)
 				fmt.Fprintf(os.Stderr, "Error reading value to read value: %v\n", err)
 				os.Exit(1)
 				return
@@ -111,8 +111,30 @@ func main() {
 			os.Exit(1)
 			return
 		}
+	} else if args[0] == "a" {
+		if len(args) != 2 {
+			fmt.Fprintf(os.Stderr, "Need 2 params: a filter")
+			fmt.Fprintf(os.Stderr, "Has %v (%d)", args, len(args))
+			os.Exit(1)
+			return
+		}
+		var cursor uint64
+		for {
+			var err error
+			var keys []string
+			keys, cursor, err = redisClient.Scan(cursor, args[1], 0).Result()
+			if err != nil {
+				panic(err)
+			}
+			for _, k := range keys {
+				fmt.Println(k)
+			}
+			if cursor == 0 { // no more keys
+				break
+			}
+		}
 	} else {
-		fmt.Fprintf(os.Stderr, "1 param needs to be 'r' to read or 'w' to write")
+		fmt.Fprintf(os.Stderr, "1 param needs to be 'r' to read, 'w' to write or 'a' to scan for key")
 		os.Exit(1)
 		return
 	}

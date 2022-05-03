@@ -6,7 +6,7 @@ import (
 	"net"
 )
 
-func rpcExposer(exposeAddr string) {
+func rpcExposer(internalAddr string, exposeAddr string) {
 	ln, err := net.Listen("tcp", exposeAddr)
 	if err != nil {
 		panic(err)
@@ -18,14 +18,14 @@ func rpcExposer(exposeAddr string) {
 			panic(err)
 		}
 
-		go handlerRcpRequest(conn)
+		go handlerRcpRequest(conn, internalAddr)
 	}
 }
 
-func handlerRcpRequest(conn net.Conn) {
+func handlerRcpRequest(conn net.Conn, addr string) {
 	fmt.Println("new client")
 
-	proxy, err := net.Dial("tcp", "127.0.0.1:1234")
+	proxy, err := net.Dial("tcp", addr)
 	if err != nil {
 		panic(err)
 	}

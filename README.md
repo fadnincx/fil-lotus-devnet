@@ -1,108 +1,81 @@
-# filecoin-eudico-devnet
-Devnet with eudico nodes based on k3s
+
+# FIL-Lotus-Devnet
+
+This Repository is part of the master thesis of Marcel Würsten \"Filecoin Consensus Performance Analysis\"
 
 
-## Quick start
+## Installation
 
-  
-
-### Install k3s
-
+### K3s
+Install k3s
 > Linux amd64
 ```
 curl -sfL https://get.k3s.io | INSTALL_K3S_SKIP_START=true INSTALL_K3S_SKIP_ENABLE=true sh -s
 ```
 
-or just do:
-```
-make install_deps
-```
 Similar steps for others platforms in https://rancher.com/docs/k3s/latest/en/quick-start/
 
+### Golang
 
-### Start k3s engine
-```
-sudo make start
-```
-  
+If you want/need to recompile the Go binaries, [Golang 1.18](https://go.dev/) is required
 
-### Build Eudico image
-```
-make build_eudico
-  ```
+## Usage
 
-### Deploy nodes
 
-The following command will apply the file `deploy/deployment.yaml` into k3s cluster. On that file you can easily change the replica set (how many eudico nodes are running)
-```
-sudo make run_deployment
-```
-  
+### Start K3s
+Start the k3s engine with 
 
-### Connecting to cluster
-
-k3s doesn’t come with a dashboard of it’s own. So it’s recommended to use tools like [lens](https://k8slens.dev/) for accessing cluster from the gui or vs-code [extension](https://code.visualstudio.com/docs/azure/kubernetes). Kubectl in other cases would work well on the remote machine. The following command will show the config for the k3s cluster which can be added to access the cluster remotely.
-```
-sudo make show_config
+```bash
+./boot.sh
 ```
 
-In the config update the server field which says `https://127.0.0.1:[port]` to `https://[remote-machine-ip]:[port]` before using it.
-
-  
-
-### Monitoring Services
-
-Using prometheus and grafana for monitoring. The following makefile target will use the configs from `/deploy/monitoring`
-```
-sudo make run_monitoring
-```
-The grafana dashboard is running inside the cluster and needs to be exposed in order to access it locally or remotely. To expose grafana is the following command:
-```
-sudo make expose_grafana
-```
-or using command in case port 3000 is already in use, replace [port] below
-```
-sudo kubectl -n monitoring port-forward --address 0.0.0.0 service/grafana [port]:3000
+### Simple Network start
+You can then tart a dev net with
+```bash
+./build_start.sh
 ```
 
-  
+Once all nodes are up and ready (can take a while), the script returns after printing a corresponding message
 
-### Scaling up nodes
+### Advanced Network start
+You can additionaly specify how many nodes should be spawned and what topology should be used.
 
-By default when running run_deployment only one eudico node will be started. You can easily scale up the numbers of nodes by doing:
-```
-sudo make scale_deployment SCALE=3  # two more eudico nodes will be spinned
-```
-  
+**Warning: not all topologies work with any number of nodes!**
 
-### Logging in into a node
+Default values are 8 nodes in a `star ` topology.
 
-Nodes are named with incremental ID’s starting from 0: **eudico-node-0, eudico-node-1, ... , eudico-node-N**
+```bash
+./build_start.sh <# of nodes> <topology>
+```
 
-For example, for logging in into node **eudico-node-1** just type:
-```
-sudo make login NODEID=1
+### Supported topologies
 
-tmux a  # Restores tmux session 
-```
-  
- ---
+* `star` default, all nodes connect to node-0
+* `ring` all nodes have exactly two connection and form a ring
+* `full` all nodes connect to all other nodes --> might lead to dropped connections
+* `tree` the nodes form a tree with each node having 2 leafs if there are enough nodes
 
-### Stopping k3s
 
-Can be done using the makefile target or using the commands using the script and killing k3s-server
-```
-bash -c /usr/local/bin/k3s-killall.sh
+### Stop Network
 
-sudo killall k3s-server
+To stop the network run
+```bash
+./stop.sh
 ```
-Makefile Target
-```
-sudo make stop
-```
-  
 
-### Uninstalling k3s
+### Kill k3s
+
+To kill the k3s engine call
+```bash
+./kill.sh
 ```
-make uninstall_deps
+**Warning: killing the k3s engine doesn't really cleanup the left over nodes**
+
+
+### Reset Node Image
+Since docker caches the image and we don't always want to rebuild the entire image, if you want to rebuild the image and download the new version after stopping everything just call 
+```bash
+docker system prune
 ```
+
+With that you remove the chached data and on next run the image is rebuild entirely.

@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: lotus-node
+  labels:
+    app: minerNode
+    tier: node
+spec:
+  serviceName: lotus-node
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minernode
+      tier: node
+  serviceName: minernode
+  template:
+    metadata:
+      labels:
+        app: minernode
+        tier: node
+    spec:
+      containers:
+        - name: lotus-node
+          image: marcelwuersten/filecoin-lotus:latest
+          imagePullPolicy: Never
+          volumeMounts:
+            - name: lotus-config
+              mountPath: /config
+          resources:
+            limits:
+              cpu: "900m"
+            requests:
+              cpu: "400m"
+              
+      volumes:
+        - name: lotus-config
+          persistentVolumeClaim:
+            claimName: config-pv
+      dnsPolicy: ClusterFirstWithHostNet
+

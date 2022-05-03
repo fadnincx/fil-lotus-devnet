@@ -18,10 +18,6 @@ spec:
       labels:
         app: redisnode
         tier: node
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "8000"
-        prometheus.io/path: "/debug/metrics"
     spec:
       hostname: lotus-redis
       subdomain: fil-lotus-devnet
