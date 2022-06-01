@@ -5,6 +5,8 @@
 #                                                                                 #
 ###################################################################################
 
+killall k3s-server
+k3s server --docker > /dev/null 2>&1 &
 
 # Build the docker image
 docker image build -t marcelwuersten/filecoin-lotus:latest -f lotus.dockerfile .
@@ -53,6 +55,10 @@ kubectl scale --replicas="${scale}" -f ./deploy/lotus.yaml
 # Save values in redis for the nodes to read
 ./redis-cli/rediscli w nettopology "$topology"
 ./redis-cli/rediscli w fil-nodes "$(($scale - 1))"
+
+if [[ $3 =~ "true" ]]; then
+  ./redis-cli/rediscli w SingleBlock "true"
+fi
 
 
 # Wait for all nodes
